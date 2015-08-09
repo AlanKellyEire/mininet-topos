@@ -24,7 +24,7 @@ from mininet.node import OVSSwitch, Controller, RemoteController
 ######################################
 spineList = [ ]
 leafList = [ ]
-
+switchList = [ ]
 ######################################
 ###### Define topologies here ########
 ######################################
@@ -33,7 +33,7 @@ leafList = [ ]
 class dcSpineLeafTopo(Topo):
    "Linear topology of k switches, with one host per switch."
 
-   def __init__(self, k=int(sys.argv[1]), **opts):
+   def __init__(self, k=int(sys.argv[1]), l=int(sys.argv[2]), **opts):
        """Init.
            k: number of switches (and hosts)
            hconf: host configuration options
@@ -42,14 +42,17 @@ class dcSpineLeafTopo(Topo):
        super(dcSpineLeafTopo, self).__init__(**opts)
 
        self.k = k
+       self.l = l 
 
        for i in irange(0, k-1):
-           spineSwitch = self.addSwitch('s%s' % (i+1))
-           leafSwitch = self.addSwitch('l%s' % (i+1))
+           spineSwitch = self.addSwitch('s%s%s' % (1,i+1))
 
            spineList.append(spineSwitch)
-           leafList.append(leafSwitch)
 
+       for i in irange(0, l-1):
+           leafSwitch = self.addSwitch('l%s%s' % (2, i+1))
+
+           leafList.append(leafSwitch)
            host1 = self.addHost('h%s' % (i+1))
            #host12 = self.addHost('h%s' % (i+1))
            #hosts1 = [ net.addHost( 'h%d' % n ) for n in 3, 4 ]
@@ -59,21 +62,44 @@ class dcSpineLeafTopo(Topo):
            #self.addLink(host12, leafSwitch)
 
        for i in irange(0, k-1):
-           for j in irange(0, k-1): #this is to go through the leaf switches
+           for j in irange(0, l-1): #this is to go through the leaf switches
                  self.addLink(spineList[i], leafList[j])
 
 def simpleTest():
    # arugment to run in NOOB, NORMAL, TEST modes
+
+   # argument to put in either remote or local controller
+
+   "Create and test a simple network"
+   c0 = RemoteController( 'c0', ip=str(sys.argv[3]) )
+
+
    class MultiSwitch( OVSSwitch ):
             "Custom Switch() subclass that connects to different controllers"
    def start( self, controllers ):
           return OVSSwitch.start( self, [ cmap[ self.name ] ] )
 
    #section for handling the differnt argumetns.... simpleTest(arg1, arg2, ...) will take in arguments from user
-   topo = dcSpineLeafTopo(k=int(sys.argv[1]))
+   topo = dcSpineLeafTopo(k=int(sys.argv[1]), l=int(sys.argv[2]))
+   switchList = spineList + leafList
    net = Mininet(  topo=topo, switch=MultiSwitch, build=False )
 
    print "connecting all SWITCHES to controller with cmap"
+   cString = "{"
+   for i in irange(0, len(switchList)-1):
+        if i != len(switchList)-1:
+           tempCString = "'" + switchList[i] + "'" + " : c0, "
+        else:
+           tempCString = "'" + switchList[i] + "'" + " : c0 "
+        cString += tempCString
+
+   cmapString = cString + "}"
+
+   cmap = cmapString
+
+   net.addController(c0)
+
+
    net.build()
    net.start()
    print "Dumping host connections"
@@ -87,7 +113,7 @@ if __name__ == '__main__':
    # pass in the arguments into simpleTest() so that they can be processed in SimpleTest
 
    print "argvs: "
-   print (sys.argv[1])
+   print (sys.argv[1:])
    # Tell mininet to print useful information
    setLogLevel('info')
    simpleTest()
