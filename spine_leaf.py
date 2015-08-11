@@ -8,6 +8,16 @@
   http://www.eclipse.org/legal/epl-v10.html
 '''
 
+'''
+Usage example: sudo python spine_leaf.py <number_of_spine_switches> <number_of_leaf_switches> <controller_IP>
+               sudo python spine_leaf.py 2 4 127.0.0.1
+
+You can also configure the link Bandwidth, Delay, Loss, Max Queue_size for the spine-to-leaf links and host-to-leaf 
+connections by changing the link_spine_leaf and link_host_leaf global variables in the script.
+
+Default is: Bandwidth=100, Delay=1ms, Loss=0, Max Queue Size=10000
+
+'''
 
 from optparse import OptionParser
 import os
@@ -21,19 +31,22 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.node import OVSSwitch, Controller, RemoteController
 
-#global variable here
+######################################
+######### Global Variables ###########
 ######################################
 spineList = [ ]
 leafList = [ ]
 switchList = [ ]
-link1 = dict(bw=100, delay='0ms', loss=0, max_queue_size=10000, use_htb=True)
+
+link1 = dict(bw=100, delay='1ms', loss=0, max_queue_size=10000, use_htb=True)
 link2 = dict(bw=15, delay='2ms', loss=0, max_queue_size=1000, use_htb=True)
-link3 = dict(bw=10, delay='1ms', loss=0, max_queue_size=1000, use_htb=True)
+link3 = dict(bw=10, delay='5ms', loss=0, max_queue_size=1000, use_htb=True)
 link4 = dict(bw=5, delay='10ms', loss=0, max_queue_size=500, use_htb=True)
 link5 = dict(bw=1, delay='15ms', loss=0, max_queue_size=100, use_htb=True)
 
 link_spine_leaf = link1
 link_host_leaf = link1
+
 ######################################
 ###### Define topologies here ########
 ######################################
@@ -42,7 +55,7 @@ link_host_leaf = link1
 class dcSpineLeafTopo(Topo):
    "Linear topology of k switches, with one host per switch."
 
-   def __init__(self, k=int(sys.argv[1]), l=int(sys.argv[2]), **opts):
+   def __init__(self, k, l, **opts):
        """Init.
            k: number of switches (and hosts)
            hconf: host configuration options
@@ -75,7 +88,6 @@ class dcSpineLeafTopo(Topo):
                  self.addLink(spineList[i], leafList[j], **link_spine_leaf)
 
 def simpleTest():
-   # arugment to run in NOOB, NORMAL, TEST modes
 
    # argument to put in either remote or local controller
 
@@ -88,7 +100,6 @@ def simpleTest():
    def start( self, controllers ):
           return OVSSwitch.start( self, [ cmap[ self.name ] ] )
 
-   #section for handling the differnt argumetns.... simpleTest(arg1, arg2, ...) will take in arguments from user
    topo = dcSpineLeafTopo(k=int(sys.argv[1]), l=int(sys.argv[2]))
    switchList = spineList + leafList
    net = Mininet(  topo=topo, switch=MultiSwitch, build=False, link=TCLink )
@@ -108,7 +119,6 @@ def simpleTest():
 
    net.addController(c0)
 
-
    net.build()
    net.start()
    print "Dumping host connections"
@@ -118,11 +128,5 @@ def simpleTest():
    net.stop()
 
 if __name__ == '__main__':
-   # get arguments here to make the code configurable
-   # pass in the arguments into simpleTest() so that they can be processed in SimpleTest
-
-   print "argvs: "
-   print (sys.argv[1:])
-   # Tell mininet to print useful information
    setLogLevel('info')
    simpleTest()
