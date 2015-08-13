@@ -9,8 +9,8 @@
 '''
 
 '''
-Usage example: sudo python spine_leaf.py <number_of_spine_switches> <number_of_leaf_switches> <controller_IP>
-               sudo python spine_leaf.py 2 4 127.0.0.1
+Usage example: sudo python spine_leaf.py <number_of_spine_switches> <number_of_leaf_switches> <primary_controller_IP> <secondary_controller_IP>
+               sudo python spine_leaf.py 2 4 172.17.0.1 172.17.0.2
 
 You can also configure the link Bandwidth, Delay, Loss, Max Queue_size for the spine-to-leaf links and host-to-leaf 
 connections by changing the link_spine_leaf and link_host_leaf global variables in the script.
@@ -93,6 +93,7 @@ def simpleTest():
 
    "Create and test a simple network"
    c0 = RemoteController( 'c0', ip=str(sys.argv[3]) )
+   c1 = RemoteController( 'c1', ip=str(sys.argv[4]) )
 
 
    class MultiSwitch( OVSSwitch ):
@@ -108,18 +109,35 @@ def simpleTest():
    cString = "{"
    for i in irange(0, len(switchList)-1):
         if i != len(switchList)-1:
-           tempCString = "'" + switchList[i] + "'" + " : c0, "
+           tempCString = "'" + switchList[i] + "'" + " : [c0,c1] "
         else:
-           tempCString = "'" + switchList[i] + "'" + " : c0 "
+           tempCString = "'" + switchList[i] + "'" + " : [c0,c1] "
         cString += tempCString
 
    cmapString = cString + "}"
 
    cmap = cmapString
 
+
    net.addController(c0)
+   net.addController(c1)
 
    net.build()
+
+   c0.start()
+   c1.start()
+   #switchList[1].start([c0, c1])
+   #switchList[2].start([c0, c1])
+
+   '''
+    for s in switchList:
+    print s
+    #s.start([c0, c1])
+    print ("starting" + s + " with c0 and c1") 
+   '''
+
+
+
    net.start()
    print "Dumping host connections"
    dumpNodeConnections(net.hosts)
