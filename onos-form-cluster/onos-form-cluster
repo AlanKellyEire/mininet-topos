@@ -1,0 +1,68 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+# Forms ONOS cluster using REST API of each separate instance.
+# -----------------------------------------------------------------------------
+if [ -z "$CLUSTER_HOSTS" ]; then
+  LIST=$*
+else
+  LIST=${CLUSTER_HOSTS//,/ }
+fi
+
+COUNT=`echo $LIST | wc -w`
+[ $COUNT -lt 2 ] && echo "usage: $(basename $0) ip1 ip2..." && exit 1
+
+HEAD=`echo $LIST | cut -d\  -f1`
+TAIL=`echo $LIST | cut -d\  -f2-`
+TAIL=${TAIL//,/ }
+
+if command -v getent > /dev/null 2>&1; then
+  ip=`getent hosts $HEAD | head -1 | cut -d\  -f1`
+
+  nodes=
+  for node in $TAIL; do
+    nodeip=`getent hosts $node | head -1 | cut -d\  -f1`
+    nodes+="$nodeip "
+  done
+else
+  ip=$HEAD
+  nodes=$TAIL
+fi
+
+ipPrefix=${ip%.*}
+
+aux=/tmp/${ipPrefix}.cluster.json
+trap "rm -f $aux" EXIT
+
+echo "{ \"nodes\": [ { \"ip\": \"$ip\" }" > $aux
+for node in $nodes; do
+    echo ", { \"ip\": \"$node\" }" >> $aux
+done
+echo "], \"ipPrefix\": \"$ipPrefix.*\" }" >> $aux
+
+# we don't want to issue the curl commands until each instance is up and
+# ready to respond
+/bin/echo "Waiting for cluster members to initialize ..."
+NODES_LEFT="$ip $nodes"
+echo "$NODES_LEFT"
+while [ -n "$NODES_LEFT" ]; do
+  /bin/echo  "Waiting for cluster members [ $NODES_LEFT ]"
+  FAILED=
+  for node in $NODES_LEFT; do
+    CODE=`curl -w "%{http_code}" -s --connect-timeout 2 -o /dev/null http://$node:8181/onos/v1/cluster`
+    if [ "$CODE" -ne 200 ]; then
+      FAILED+="$node "
+    fi
+  done
+  NODES_LEFT=$FAILED
+  if [ -n "$NODES_LEFT" ]; then
+    sleep 1
+  fi
+done
+/bin/echo "Cluster members initialize, forming cluster ..."
+
+for node in $ip $nodes; do
+    echo "Forming cluster on $node..."
+    curl -s -X POST http://$node:8181/onos/v1/cluster/configuration -d @$aux
+done
+
+sleep infinity
