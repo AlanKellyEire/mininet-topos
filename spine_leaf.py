@@ -23,6 +23,7 @@ from optparse import OptionParser
 import os
 import sys
 import time
+import socket
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.util import irange,dumpNodeConnections
@@ -93,7 +94,7 @@ def simpleTest(options):
         controllers = []
         "Create remote controller to which switches are attached"
         for idx, addr in enumerate(options.controllers):
-            controllers.append(RemoteController( "c%d" % idx, ip=addr))
+            controllers.append(RemoteController( "c%d" % idx, ip=socket.gethostbyname(addr)))
 
     class MultiSwitch( OVSSwitch ):
         "Custom Switch() subclass that connects to different controllers"
