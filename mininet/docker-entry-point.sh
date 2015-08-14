@@ -12,9 +12,16 @@ usage() {
 # Start the Open Virtual Switch Service
 service openvswitch-switch start
 
+# If environment variables have been set to specify a mininet script to
+# execute then we will honor those
+if [ $# -eq 0 -a -n "$MININET_SCRIPT" ]; then
+  curl -s -o ./script "$MININET_SCRIPT"
+  chmod 755 ./script
+  exec ./script $MININET_SCRIPT_OPTIONS
+
 # If no options are given or if only a single option is given and it is "-h"
 # display help infformation
-if [ $# -eq 0 -o $1 == "-h" ]; then
+elif [ $# -eq 0 -o $1 == "-h" ]; then
   usage
 else
 
