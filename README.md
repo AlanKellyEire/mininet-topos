@@ -11,12 +11,13 @@ and multiple fail-over controllers).
   - Python 2.7
 
 #### Options
-    --version                        show program's version number and exit
-    -h, --help                       show this help message and exit
-    -l INTEGER, --leaves=INTEGER     specify the number of leaf switches
-    -s INTEGER, --spines=INTEGER     specify the number of spine switches
-    -c IP, --controller=IP           specify the IP address of the controller
-    -v, --verbose                    display additional logging information
+    --version                           show program's version number and exit
+    -h, --help                          show this help message and exit
+    -l INTEGER, --leaves=INTEGER        specify the number of leaf switches
+    -s INTEGER, --spines=INTEGER        specify the number of spine switches
+    -n INTEGER, --clienthosts=INTEGER   specify the number of client hosts connected to the client switch
+    -c IP, --controller=IP              specify the IP address of the controller
+    -v, --verbose                       display additional logging information
 
 The controller option (```-c``` or ```--controller```) can be specified multiple
 times to specify additional controllers to which a switch will connect. The
