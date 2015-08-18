@@ -10,7 +10,7 @@
 
 '''
 Usage example: sudo python spine_leaf.py <number_of_spine_switches> <number_of_leaf_switches> <primary_controller_IP> <secondary_controller_IP>
-			   sudo python spine_leaf.py 2 4 172.17.0.1 172.17.0.2
+               sudo python spine_leaf.py 2 4 172.17.0.1 172.17.0.2
 
 You can also configure the link Bandwidth, Delay, Loss, Max Queue_size for the spine-to-leaf links and host-to-leaf
 connections by changing the link_spine_leaf and link_host_leaf global variables in the script.
@@ -36,6 +36,7 @@ from mininet.node import OVSSwitch, Controller, RemoteController
 ######################################
 spineList = [ ]
 leafList = [ ]
+clientSwitchList = [ ]
 switchList = [ ]
 
 link1 = dict(bw=100, delay='1ms', loss=0, max_queue_size=10000, use_htb=True)
@@ -46,6 +47,8 @@ link5 = dict(bw=1, delay='15ms', loss=0, max_queue_size=100, use_htb=True)
 
 link_spine_leaf = link1
 link_host_leaf = link1
+link_host_clientswitch = link1
+link_clientswitch_spine = link1
 
 ######################################
 ###### Define topologies here ########
@@ -55,7 +58,7 @@ link_host_leaf = link1
 class dcSpineLeafTopo(Topo):
     "Linear topology of k switches, with one host per switch."
 
-    def __init__(self, k, l, **opts):
+    def __init__(self, k, l, hc, **opts):
         """Init.
             k: number of switches (and hosts)
             hconf: host configuration options
@@ -65,6 +68,7 @@ class dcSpineLeafTopo(Topo):
 
         self.k = k
         self.l = l
+        self.hc = hc
 
         for i in irange(0, k-1):
             spineSwitch = self.addSwitch('s%s%s' % (1,i+1))
@@ -82,7 +86,16 @@ class dcSpineLeafTopo(Topo):
             self.addLink(host1, leafSwitch, **link_host_leaf)
             #self.addLink(host12, leafSwitch)
 
+        clientSwitch = self.addSwitch('c1')
+        clientSwitchList.append(clientSwitch)
+        for i in irange(0, hc-1):
+            clienthost = self.addHost('h%s%s' % (2, i+1))
+            self.addLink(clienthost, clientSwitch, **link_host_clientswitch)
+
+
+
         for i in irange(0, k-1):
+            self.addLink(clientSwitch, spineList[i], **link_clientswitch_spine)
             for j in irange(0, l-1): #this is to go through the leaf switches
                 self.addLink(spineList[i], leafList[j], **link_spine_leaf)
 
@@ -100,8 +113,8 @@ def simpleTest(options):
     def start( self, controllers ):
         return OVSSwitch.start( self, [ cmap[ self.name ] ] )
 
-    topo = dcSpineLeafTopo(k=options.spine_count, l=options.leaf_count)
-    switchList = spineList + leafList
+    topo = dcSpineLeafTopo(k=options.spine_count, l=options.leaf_count, hc=options.client_host_count)
+    switchList = spineList + leafList + clientSwitchList
     net = Mininet(  topo=topo, switch=MultiSwitch, build=False, link=TCLink )
 
     if controllers:
@@ -139,13 +152,16 @@ if __name__ == '__main__':
         metavar="INTEGER", type="int", default=4)
     parser.add_option("-s", "--spines", dest="spine_count",
         help="specify the number of spine switches",
-    	metavar="INTEGER", type="int", default=2)
+        metavar="INTEGER", type="int", default=2)
+    parser.add_option("-n", "--clienthosts", dest="client_host_count",
+        help="specify the number of client hosts connected to the client switch",
+        metavar="INTEGER", type="int", default=3)
     parser.add_option("-c", "--controller", dest="controllers",
         help="specify the IP address of the controller",
         action="append", metavar="IP")
     parser.add_option("-v", "--verbose", dest="verbose",
-		help="display additional logging information",
-		action="store_true", default=False)
+        help="display additional logging information",
+        action="store_true", default=False)
 
     (options, args) = parser.parse_args()
 
