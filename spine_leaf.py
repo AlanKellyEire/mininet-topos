@@ -25,6 +25,7 @@ import sys
 import time
 from mininet.topo import Topo
 from mininet.net import Mininet
+from mininet.node import Node
 from mininet.util import irange,dumpNodeConnections
 from mininet.log import setLogLevel
 from mininet.cli import CLI
@@ -36,6 +37,7 @@ from mininet.node import OVSSwitch, Controller, RemoteController
 ######################################
 spineList = [ ]
 leafList = [ ]
+OLTList = [ ]
 switchList = [ ]
 
 link1 = dict(bw=100, delay='1ms', loss=0, max_queue_size=10000, use_htb=True)
@@ -73,18 +75,39 @@ class dcSpineLeafTopo(Topo):
         for i in irange(0, l-1):
             leafSwitch = self.addSwitch('l%s%s' % (2, i+1))
 
-            leafList.append(leafSwitch)
-            host1 = self.addHost('h%s' % (i+1))
-            #host12 = self.addHost('h%s' % (i+1))
-            #hosts1 = [ net.addHost( 'h%d' % n ) for n in 3, 4 ]
+            if(i==0):
+            	OLTSwitch = self.addSwitch('o%s%s' % (3, 1))
+            	OLTList.append(OLTSwitch)
+            	#defaultIP = '192.168.1.1/24'  # IP address for r0-eth1
+        		router = self.addNode( 'r0', cls=LinuxRouter, ip='192.168.1.1/24' )
+        		self.addLink( OLTSwitch, router, intfName2='r0-eth1', params2={ 'ip' : '192.168.1.1/24' } ) 
+        		#adding a host connected to the router
+        		routerhost = self.addHost('h%s%s' % (2, 1))
+        		self.addLink( routerhost, router, intfName2='r0-eth2', params2={ 'ip' : '172.16.0.1/12' } )
+        	else:
+        		leafList.append(leafSwitch)
+            	host1 = self.addHost('h%s' % (i+1))
 
-            "connection of the hosts to the left tor switch "
-            self.addLink(host1, leafSwitch, **link_host_leaf)
-            #self.addLink(host12, leafSwitch)
+            	"connection of the hosts to the left tor switch "
+            	self.addLink(host1, leafSwitch, **link_host_leaf)
+
 
         for i in irange(0, k-1):
             for j in irange(0, l-1): #this is to go through the leaf switches
                 self.addLink(spineList[i], leafList[j], **link_spine_leaf)
+
+class LinuxRouter( Node ):
+    "A Node with IP forwarding enabled."
+
+    def config( self, **params ):
+        super( LinuxRouter, self).config( **params )
+        # Enable forwarding on the router
+        self.cmd( 'sysctl net.ipv4.ip_forward=1' )
+
+    def terminate( self ):
+        self.cmd( 'sysctl net.ipv4.ip_forward=0' )
+        super( LinuxRouter, self ).terminate()
+
 
 def simpleTest(options):
     # argument to put in either remote or local controller
@@ -128,6 +151,9 @@ def simpleTest(options):
     net.start()
     print "Dumping host connections"
     dumpNodeConnections(net.hosts)
+
+    info( 'Routing Table:\n' )
+    print net['r0'].cmd('route')
 
     CLI( net )
     net.stop()
