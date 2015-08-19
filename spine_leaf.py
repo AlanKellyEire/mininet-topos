@@ -82,7 +82,7 @@ class dcSpineLeafTopo(Topo):
         		router = self.addNode( 'r0', cls=LinuxRouter, ip='192.168.1.1/24' )
         		self.addLink( OLTSwitch, router, intfName2='r0-eth1', params2={ 'ip' : '192.168.1.1/24' } ) 
         		#adding a host connected to the router
-        		routerhost = self.addHost('h%s%s' % (2, 1))
+        		routerhost = self.addHost('h%s%s' % (2, 1), ip='172.16.0.100/12', defaultRoute='via 172.16.0.1')
         		self.addLink( routerhost, router, intfName2='r0-eth2', params2={ 'ip' : '172.16.0.1/12' } )
         	else:
         		leafList.append(leafSwitch)
